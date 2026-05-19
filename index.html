@@ -76,6 +76,32 @@
       font-size:14px;
       cursor:pointer;
     }
+    .risco-opcoes{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:6px;
+    }
+    .risco-opcoes label{
+      display:flex;
+      align-items:center;
+      justify-content:flex-start;
+      gap:6px;
+      padding:8px;
+      background:#fff;
+      color:#111827;
+      border-radius:8px;
+      font-size:12px;
+      line-height:1.1;
+      cursor:pointer;
+      text-align:left;
+    }
+    .risco-opcoes input{
+      display:inline-block;
+      width:15px;
+      height:15px;
+      margin:0;
+      cursor:pointer;
+    }
     .controle-risco{
       background:rgba(255,255,255,.08);
       border:1px solid rgba(255,255,255,.12);
@@ -379,14 +405,14 @@
       <input id="uploadLogo2" type="file" accept="image/*">
     </label>
     <div class="controle-risco">
-      <strong>Alterar nível de risco</strong>
-      <select id="selectRisco">
-        <option value="r1">R1 – Baixo</option>
-        <option value="r2">R2 – Médio</option>
-        <option value="r3">R3 – Alto</option>
-        <option value="r4">R4 – Crítico</option>
-      </select>
-      <button onclick="alterarNivelRisco()">Aplicar nível</button>
+      <strong>Alterar níveis de risco</strong>
+      <div class="risco-opcoes">
+        <label><input type="checkbox" name="riscosPMRR" value="r1" checked> R1</label>
+        <label><input type="checkbox" name="riscosPMRR" value="r2"> R2</label>
+        <label><input type="checkbox" name="riscosPMRR" value="r3"> R3</label>
+        <label><input type="checkbox" name="riscosPMRR" value="r4"> R4</label>
+      </div>
+      <button onclick="alterarNivelRisco()">Aplicar níveis</button>
     </div>
     <button onclick="ajustarBordasAoMapa()">Ajustar bordas ao mapa</button>
     <button onclick="exportarPNG()">Exportar PNG</button>
@@ -438,9 +464,11 @@
               <div class="symbol"></div>
               <div contenteditable="true">DELIMITAÇÃO DO BAIRRO<br>SANTA AUGUSTA</div>
             </div>
-            <div class="legend-row">
-              <div class="symbol r1" id="simboloRisco"></div>
-              <div contenteditable="true" id="textoLegendaRisco"><b>R1 – BAIXO RISCO</b><br>Áreas mais baixas suscetíveis a alagamentos.</div>
+            <div id="legendasRiscoPMRR">
+              <div class="legend-row">
+                <div class="symbol r1"></div>
+                <div contenteditable="true"><b>R1 – BAIXO RISCO</b><br>Áreas mais baixas suscetíveis a alagamentos.</div>
+              </div>
             </div>
           </div>
         </section>
@@ -451,8 +479,8 @@
             <thead>
               <tr><th contenteditable="true">RISCO</th><th contenteditable="true">GRAU</th></tr>
             </thead>
-            <tbody>
-              <tr><td contenteditable="true" id="tabelaRiscoCodigo">R1</td><td class="grau-r1" contenteditable="true" id="tabelaRiscoGrau">BAIXO</td></tr>
+            <tbody id="tabelaRiscosPMRR">
+              <tr><td contenteditable="true">R1</td><td class="grau-r1" contenteditable="true">BAIXO</td></tr>
             </tbody>
           </table>
         </section>
@@ -529,7 +557,7 @@
       classe: 'r1',
       classeGrau: 'grau-r1',
       descricao: 'Áreas mais baixas suscetíveis a alagamentos.',
-      logradouroTitulo: 'R1 – BAIXO RISCO'
+      logradouroTitulo: 'R1 – BAIXO'
     },
     r2: {
       codigo: 'R2',
@@ -537,7 +565,7 @@
       classe: 'r2',
       classeGrau: 'grau-r2',
       descricao: 'Área com possibilidade de ocorrência de evento adverso, exigindo monitoramento preventivo.',
-      logradouroTitulo: 'R2 – MÉDIO RISCO'
+      logradouroTitulo: 'R2 – MÉDIO'
     },
     r3: {
       codigo: 'R3',
@@ -545,7 +573,7 @@
       classe: 'r3',
       classeGrau: 'grau-r3',
       descricao: 'Área com risco alto, histórico ou evidências de ameaça, exigindo atenção prioritária.',
-      logradouroTitulo: 'R3 – ALTO RISCO'
+      logradouroTitulo: 'R3 – ALTO'
     },
     r4: {
       codigo: 'R4',
@@ -558,35 +586,43 @@
   };
 
   function alterarNivelRisco(){
-    const valor = document.getElementById('selectRisco')?.value || 'r1';
-    const risco = niveisRiscoPMRR[valor];
-    if(!risco) return;
-
-    const simbolo = document.getElementById('simboloRisco');
-    if(simbolo){
-      simbolo.classList.remove('r1','r2','r3','r4');
-      simbolo.classList.add(risco.classe);
+    let selecionados = Array.from(document.querySelectorAll('input[name="riscosPMRR"]:checked')).map(input => input.value);
+    if(!selecionados.length){
+      selecionados = ['r1'];
+      const padrao = document.querySelector('input[name="riscosPMRR"][value="r1"]');
+      if(padrao) padrao.checked = true;
     }
 
-    const textoLegenda = document.getElementById('textoLegendaRisco');
-    if(textoLegenda){
-      textoLegenda.innerHTML = `<b>${risco.codigo} – ${risco.grau} RISCO</b><br>${risco.descricao}`;
+    const riscos = selecionados.map(valor => niveisRiscoPMRR[valor]).filter(Boolean);
+    if(!riscos.length) return;
+
+    const legendas = document.getElementById('legendasRiscoPMRR');
+    if(legendas){
+      legendas.innerHTML = riscos.map(risco => `
+        <div class="legend-row">
+          <div class="symbol ${risco.classe}"></div>
+          <div contenteditable="true"><b>${risco.codigo} – ${risco.grau} RISCO</b><br>${risco.descricao}</div>
+        </div>
+      `).join('');
     }
 
-    const tabelaCodigo = document.getElementById('tabelaRiscoCodigo');
-    if(tabelaCodigo) tabelaCodigo.innerText = risco.codigo;
-
-    const tabelaGrau = document.getElementById('tabelaRiscoGrau');
-    if(tabelaGrau){
-      tabelaGrau.classList.remove('grau-r1','grau-r2','grau-r3','grau-r4');
-      tabelaGrau.classList.add(risco.classeGrau);
-      tabelaGrau.innerText = risco.grau;
+    const tabela = document.getElementById('tabelaRiscosPMRR');
+    if(tabela){
+      tabela.innerHTML = riscos.map(risco => `
+        <tr>
+          <td contenteditable="true">${risco.codigo}</td>
+          <td class="${risco.classeGrau}" contenteditable="true">${risco.grau}</td>
+        </tr>
+      `).join('');
     }
 
     const logradouro = document.getElementById('logradouroRisco');
     if(logradouro){
-      const listaAtual = logradouro.querySelector('ul')?.innerHTML || '<li>Informe o logradouro</li>';
-      logradouro.innerHTML = `<div class="linha"><span class="mini-line"></span><b>${risco.logradouroTitulo}</b></div><ul>${listaAtual}</ul>`;
+      const itensAtuais = Array.from(logradouro.querySelectorAll('li')).map(li => `<li>${li.innerHTML}</li>`).join('') || '<li>Informe o logradouro</li>';
+      logradouro.innerHTML = riscos.map((risco, index) => `
+        <div class="linha"><span class="mini-line"></span><b>${risco.logradouroTitulo}</b></div>
+        <ul>${index === 0 ? itensAtuais : '<li>Informe o logradouro</li>'}</ul>
+      `).join('');
     }
   }
 
