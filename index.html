@@ -395,13 +395,13 @@
 <body>
   <div class="toolbar">
     <div class="painel-titulo">EDITOR PMRR<br><span style="font-size:12px;font-weight:600;opacity:.8">Barra lateral esquerda</span></div>
-    <label>Adicionar mapa central
+    <label>Adicionar Imagem
       <input id="uploadMapa" type="file" accept="image/*">
     </label>
-    <label>Trocar logo esquerda
+    <label> NÃO CLIQUE
       <input id="uploadLogo1" type="file" accept="image/*">
     </label>
-    <label>Trocar logo direita
+    <label> NÃO CLIQUE
       <input id="uploadLogo2" type="file" accept="image/*">
     </label>
     <div class="controle-risco">
@@ -431,7 +431,7 @@
     <main id="mapa-pmrr">
       <header class="topo">
         <section class="titulo">
-          <h1 contenteditable="true">MAPA DE RISCO DE ALAGAMENTO</h1>
+          <h1 contenteditable="true">MAPA DE RISCO</h1>
           <h2 contenteditable="true">BAIRRO SANTA AUGUSTA – BRAÇO DO NORTE/SC</h2>
           <h3 contenteditable="true">PMRR – PLANO MUNICIPAL DE REDUÇÃO DE RISCOS DE DESASTRES</h3>
         </section>
@@ -490,8 +490,7 @@
           <div class="content" contenteditable="true" id="logradouroRisco">
             <div class="linha"><span class="mini-line"></span><b>R1 – BAIXO RISCO</b></div>
             <ul>
-              <li>Rua Ricardo Witthinrich</li>
-              <li>Rua José Spech</li>
+              <li>Informe o logradouro</li>
             </ul>
           </div>
         </section>
@@ -690,7 +689,7 @@
     return `MAPA ${bairro || 'EDITADO'}.${extensao}`;
   }
 
-  function prepararLogosParaExportacao(){
+  function pr9yMnTm4NSzvG9rrwjM2ec8xZgh1cafXH8(){
     const alterados = [];
     document.querySelectorAll('.logoBox, .logoBox *').forEach((el) => {
       alterados.push({
@@ -720,10 +719,31 @@
     };
   }
 
+
+  function aplicarCoresRiscoInline(contexto = document){
+    const cores = {
+      'grau-r1': { bg: '#56b4f0', color: '#111111' },
+      'grau-r2': { bg: '#f4a742', color: '#111111' },
+      'grau-r3': { bg: '#f57c00', color: '#ffffff' },
+      'grau-r4': { bg: '#d71920', color: '#ffffff' }
+    };
+
+    Object.keys(cores).forEach(classe => {
+      contexto.querySelectorAll('.' + classe).forEach(el => {
+        el.style.setProperty('background-color', cores[classe].bg, 'important');
+        el.style.setProperty('background', cores[classe].bg, 'important');
+        el.style.setProperty('color', cores[classe].color, 'important');
+        el.style.setProperty('-webkit-print-color-adjust', 'exact', 'important');
+        el.style.setProperty('print-color-adjust', 'exact', 'important');
+      });
+    });
+  }
+
   async function capturarMapaCanvas(){
     ajustarBordasAoMapa();
     document.body.classList.add('exporting');
-    const restaurarLogos = prepararLogosParaExportacao();
+    aplicarCoresRiscoInline(document);
+    const restaurarLogos = pr9yMnTm4NSzvG9rrwjM2ec8xZgh1cafXH8();
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     const alvo = document.getElementById('mapa-pmrr');
     try{
@@ -747,11 +767,17 @@
             el.style.setProperty('background', '#ffffff', 'important');
           });
 
+          aplicarCoresRiscoInline(doc);
+
           doc.querySelectorAll('[contenteditable="true"]').forEach((el) => {
             el.style.outline = '0';
             el.style.boxShadow = 'none';
-            el.style.background = 'transparent';
+            if(!el.classList.contains('grau-r1') && !el.classList.contains('grau-r2') && !el.classList.contains('grau-r3') && !el.classList.contains('grau-r4')){
+              el.style.background = 'transparent';
+            }
           });
+
+          aplicarCoresRiscoInline(doc);
         }
       });
     } finally {
