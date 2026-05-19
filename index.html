@@ -64,6 +64,32 @@
     }
     .toolbar button.secondary{ background:#374151; }
     .toolbar input{ display:none; }
+
+    .toolbar select{
+      width:100%;
+      border:0;
+      border-radius:8px;
+      padding:10px 12px;
+      background:#fff;
+      color:#111827;
+      font-weight:700;
+      font-size:14px;
+      cursor:pointer;
+    }
+    .controle-risco{
+      background:rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:10px;
+      padding:10px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+    .controle-risco strong{
+      font-size:13px;
+      text-align:center;
+      text-transform:uppercase;
+    }
     .toolbar small{ opacity:.82; line-height:1.35; font-size:12px; }
     .toolbar .aviso{
       background:rgba(255,255,255,.08);
@@ -352,6 +378,16 @@
     <label>Trocar logo direita
       <input id="uploadLogo2" type="file" accept="image/*">
     </label>
+    <div class="controle-risco">
+      <strong>Alterar nível de risco</strong>
+      <select id="selectRisco">
+        <option value="r1">R1 – Baixo</option>
+        <option value="r2">R2 – Médio</option>
+        <option value="r3">R3 – Alto</option>
+        <option value="r4">R4 – Crítico</option>
+      </select>
+      <button onclick="alterarNivelRisco()">Aplicar nível</button>
+    </div>
     <button onclick="ajustarBordasAoMapa()">Ajustar bordas ao mapa</button>
     <button onclick="exportarPNG()">Exportar PNG</button>
     <button class="secondary" onclick="exportarPDF()">Salvar em PDF</button>
@@ -403,8 +439,8 @@
               <div contenteditable="true">DELIMITAÇÃO DO BAIRRO<br>SANTA AUGUSTA</div>
             </div>
             <div class="legend-row">
-              <div class="symbol r1"></div>
-              <div contenteditable="true"><b>R1 – BAIXO RISCO</b><br>Áreas mais baixas suscetíveis a alagamentos.</div>
+              <div class="symbol r1" id="simboloRisco"></div>
+              <div contenteditable="true" id="textoLegendaRisco"><b>R1 – BAIXO RISCO</b><br>Áreas mais baixas suscetíveis a alagamentos.</div>
             </div>
           </div>
         </section>
@@ -416,14 +452,14 @@
               <tr><th contenteditable="true">RISCO</th><th contenteditable="true">GRAU</th></tr>
             </thead>
             <tbody>
-              <tr><td contenteditable="true">R1</td><td class="grau-r1" contenteditable="true">BAIXO</td></tr>
+              <tr><td contenteditable="true" id="tabelaRiscoCodigo">R1</td><td class="grau-r1" contenteditable="true" id="tabelaRiscoGrau">BAIXO</td></tr>
             </tbody>
           </table>
         </section>
 
         <section class="box">
           <div class="box-title">LOGRADOUROS COM RISCO</div>
-          <div class="content" contenteditable="true">
+          <div class="content" contenteditable="true" id="logradouroRisco">
             <div class="linha"><span class="mini-line"></span><b>R1 – BAIXO RISCO</b></div>
             <ul>
               <li>Rua Ricardo Witthinrich</li>
@@ -485,6 +521,74 @@
   carregarImagem('uploadMapa','mapaImg');
   carregarImagem('uploadLogo1','logo1');
   carregarImagem('uploadLogo2','logo2');
+
+  const niveisRiscoPMRR = {
+    r1: {
+      codigo: 'R1',
+      grau: 'BAIXO',
+      classe: 'r1',
+      classeGrau: 'grau-r1',
+      descricao: 'Áreas mais baixas suscetíveis a alagamentos.',
+      logradouroTitulo: 'R1 – BAIXO RISCO'
+    },
+    r2: {
+      codigo: 'R2',
+      grau: 'MÉDIO',
+      classe: 'r2',
+      classeGrau: 'grau-r2',
+      descricao: 'Área com possibilidade de ocorrência de evento adverso, exigindo monitoramento preventivo.',
+      logradouroTitulo: 'R2 – MÉDIO RISCO'
+    },
+    r3: {
+      codigo: 'R3',
+      grau: 'ALTO',
+      classe: 'r3',
+      classeGrau: 'grau-r3',
+      descricao: 'Área com risco alto, histórico ou evidências de ameaça, exigindo atenção prioritária.',
+      logradouroTitulo: 'R3 – ALTO RISCO'
+    },
+    r4: {
+      codigo: 'R4',
+      grau: 'CRÍTICO',
+      classe: 'r4',
+      classeGrau: 'grau-r4',
+      descricao: 'Área de risco CRÍTICO, com condição crítica e necessidade de medidas imediatas de prevenção e resposta.',
+      logradouroTitulo: 'R4 – CRÍTICO'
+    }
+  };
+
+  function alterarNivelRisco(){
+    const valor = document.getElementById('selectRisco')?.value || 'r1';
+    const risco = niveisRiscoPMRR[valor];
+    if(!risco) return;
+
+    const simbolo = document.getElementById('simboloRisco');
+    if(simbolo){
+      simbolo.classList.remove('r1','r2','r3','r4');
+      simbolo.classList.add(risco.classe);
+    }
+
+    const textoLegenda = document.getElementById('textoLegendaRisco');
+    if(textoLegenda){
+      textoLegenda.innerHTML = `<b>${risco.codigo} – ${risco.grau} RISCO</b><br>${risco.descricao}`;
+    }
+
+    const tabelaCodigo = document.getElementById('tabelaRiscoCodigo');
+    if(tabelaCodigo) tabelaCodigo.innerText = risco.codigo;
+
+    const tabelaGrau = document.getElementById('tabelaRiscoGrau');
+    if(tabelaGrau){
+      tabelaGrau.classList.remove('grau-r1','grau-r2','grau-r3','grau-r4');
+      tabelaGrau.classList.add(risco.classeGrau);
+      tabelaGrau.innerText = risco.grau;
+    }
+
+    const logradouro = document.getElementById('logradouroRisco');
+    if(logradouro){
+      const listaAtual = logradouro.querySelector('ul')?.innerHTML || '<li>Informe o logradouro</li>';
+      logradouro.innerHTML = `<div class="linha"><span class="mini-line"></span><b>${risco.logradouroTitulo}</b></div><ul>${listaAtual}</ul>`;
+    }
+  }
 
   function carregarLogoAutomatica(alvoId, arquivos){
     const box = document.getElementById(alvoId);
