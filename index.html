@@ -1,0 +1,643 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Editor de Mapa PMRR</title>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <style>
+    :root{
+      --azul:#00285f;
+      --azul2:#003978;
+      --borda:#cfcfcf;
+      --texto:#111;
+      --r1:#56b4f0;
+      --r2:#f4a742;
+      --r3:#f57c00;
+      --r4:#d71920;
+      --verde:#79c943;
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      background:#e9eef5;
+      font-family: Arial, Helvetica, sans-serif;
+      color:var(--texto);
+    }
+    .toolbar{
+      position:fixed;
+      left:0;
+      top:0;
+      bottom:0;
+      width:280px;
+      z-index:99;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      align-items:stretch;
+      padding:14px 12px;
+      background:#111827;
+      color:#fff;
+      box-shadow:2px 0 12px rgba(0,0,0,.32);
+      overflow-y:auto;
+    }
+    .toolbar .painel-titulo{
+      font-weight:900;
+      font-size:16px;
+      text-align:center;
+      padding:8px 4px 12px;
+      border-bottom:1px solid rgba(255,255,255,.18);
+      margin-bottom:4px;
+    }
+    .toolbar button,.toolbar label{
+      border:0;
+      border-radius:8px;
+      padding:10px 12px;
+      background:#2563eb;
+      color:#fff;
+      font-weight:700;
+      cursor:pointer;
+      font-size:14px;
+      text-align:center;
+      line-height:1.15;
+    }
+    .toolbar button.secondary{ background:#374151; }
+    .toolbar input{ display:none; }
+    .toolbar small{ opacity:.82; line-height:1.35; font-size:12px; }
+    .toolbar .aviso{
+      background:rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:10px;
+      padding:10px;
+      font-size:12px;
+      line-height:1.35;
+    }
+    .wrap{
+      margin-left:280px;
+      min-height:100vh;
+      padding:18px 22px;
+      overflow:auto;
+      display:flex;
+      justify-content:center;
+      align-items:flex-start;
+    }
+    #mapa-pmrr{
+      width:min(1780px, calc(100vw - 325px));
+      height:auto;
+      background:#fff;
+      margin:0 auto;
+      border:2px solid #ddd;
+      display:grid;
+      grid-template-columns: minmax(0,1fr) 330px;
+      grid-template-rows:130px auto;
+      box-shadow:0 8px 28px rgba(0,0,0,.25);
+    }
+    .topo{
+      grid-column:1/3;
+      display:grid;
+      grid-template-columns: 1fr 470px;
+      border-bottom:3px solid #fff;
+    }
+    .titulo{
+      background:linear-gradient(90deg,#001f52,#00316e);
+      color:white;
+      text-align:center;
+      padding:15px 10px 8px;
+      border-right:2px solid #ccc;
+      text-transform:uppercase;
+      letter-spacing:.5px;
+    }
+    .titulo h1{
+      margin:0;
+      font-size:42px;
+      line-height:1.05;
+      font-weight:900;
+    }
+    .titulo h2{
+      margin:6px 0 0;
+      font-size:30px;
+      line-height:1.05;
+      font-weight:900;
+    }
+    .titulo h3{
+      margin:5px 0 0;
+      font-size:22px;
+      line-height:1.05;
+      font-weight:900;
+    }
+    .logos{
+      display:grid;
+      grid-template-columns:120px 1fr 100px;
+      align-items:center;
+      gap:8px;
+      background:#fff;
+      padding:10px 12px;
+      text-align:center;
+    }
+    .logoBox{
+      height:92px;
+      border:0 !important;
+      outline:0 !important;
+      box-shadow:none !important;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:12px;
+      color:#475569;
+      overflow:hidden;
+      cursor:pointer;
+      background:#fff;
+    }
+    .logoBox:hover{
+      outline:1px dashed #cbd5e1 !important;
+      outline-offset:-2px;
+      background:#f8fafc;
+    }
+    .logoBox img{ max-width:100%; max-height:100%; width:auto; height:auto; object-fit:contain; display:block; }
+    .prefeitura{
+      font-weight:900;
+      color:#111;
+      line-height:1.2;
+      font-size:17px;
+      text-transform:uppercase;
+    }
+    .prefeitura .cidade{
+      display:block;
+      color:#00285f;
+      font-size:27px;
+      margin:9px 0;
+    }
+    .mapa-area{
+      position:relative;
+      background:#000;
+      border-right:2px solid #999;
+      overflow:hidden;
+      height:var(--mapa-central-altura, 900px);
+      align-self:start;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    #mapaImg{
+      max-width:100%;
+      max-height:100%;
+      width:100%;
+      height:100%;
+      object-fit:contain;
+      display:none;
+    }
+    .placeholder{
+      color:#fff;
+      text-align:center;
+      font-size:26px;
+      line-height:1.4;
+      padding:30px;
+      opacity:.75;
+    }
+    .placeholder b{ color:#93c5fd; }
+    .sidebar{
+      padding:13px 16px;
+      background:#fff;
+      display:flex;
+      flex-direction:column;
+      gap:17px;
+      border-left:1px solid #ddd;
+    }
+    .box{
+      width:100%;
+    }
+    .box-title{
+      background:var(--azul);
+      color:#fff;
+      text-align:center;
+      font-weight:900;
+      padding:8px 6px;
+      font-size:16px;
+      text-transform:uppercase;
+      margin-bottom:10px;
+    }
+    .content{
+      font-size:15px;
+      line-height:1.35;
+      min-height:26px;
+    }
+    [contenteditable="true"]{
+      outline:1px dashed transparent;
+      border-radius:3px;
+    }
+    [contenteditable="true"]:hover,
+    [contenteditable="true"]:focus{
+      outline-color:#60a5fa;
+      background:#eff6ff;
+    }
+    .legend-row{
+      display:grid;
+      grid-template-columns:42px 1fr;
+      gap:9px;
+      align-items:start;
+      margin:12px 0;
+    }
+    .symbol{
+      width:36px;
+      height:23px;
+      border:4px solid var(--verde);
+      background:#fff;
+      margin:2px 0;
+    }
+    .symbol.r1{ border:3px solid #1982d2; background:var(--r1); }
+    .symbol.r2{ border:3px solid #b86b00; background:var(--r2); }
+    .symbol.r3{ border:3px solid #9a4b00; background:var(--r3); }
+    .symbol.r4{ border:3px solid #8b0000; background:var(--r4); }
+    table{
+      border-collapse:collapse;
+      width:100%;
+      font-size:15px;
+      text-align:center;
+    }
+    th,td{
+      border:1px solid #999;
+      padding:8px 6px;
+    }
+    th{ background:#eee; font-weight:900; }
+    .grau-r1{ background:var(--r1); }
+    .grau-r2{ background:var(--r2); }
+    .grau-r3{ background:var(--r3); color:#fff; }
+    .grau-r4{ background:var(--r4); color:#fff; }
+    ul{ margin:8px 0 0 24px; padding:0; }
+    li{ margin:6px 0; }
+    .linha{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      margin:8px 0;
+    }
+    .mini-line{
+      width:21px;
+      height:4px;
+      background:#0974df;
+      display:inline-block;
+    }
+    .conv{
+      display:grid;
+      grid-template-columns:45px 1fr;
+      gap:8px;
+      align-items:center;
+      margin:10px 0;
+      font-size:14px;
+    }
+    .water{ color:#00a2ff; font-size:22px; font-weight:bold; line-height:1; }
+    .road-main{ width:36px; border-top:4px solid #111; }
+    .road-local{ width:36px; border-top:3px solid #777; }
+    .limite{ width:36px; border-top:2px dashed #777; }
+    .small{ font-size:11px; line-height:1.5; text-align:center; }
+    .footer-note{
+      position:absolute;
+      bottom:10px;
+      left:10px;
+      background:rgba(255,255,255,.85);
+      color:#111;
+      padding:5px 8px;
+      border-radius:4px;
+      font-size:12px;
+      display:none;
+    }
+
+    /* MODO EXPORTAÇÃO: remove guias de edição da imagem final */
+    body.exporting [contenteditable="true"],
+    body.exporting [contenteditable="true"]:hover,
+    body.exporting [contenteditable="true"]:focus{
+      outline:none !important;
+      background:transparent !important;
+    }
+    body.exporting .logoBox{
+      border:0 !important;
+      outline:0 !important;
+      box-shadow:none !important;
+      background:#fff !important;
+    }
+    body.exporting .logoBox img{
+      object-fit:contain !important;
+      width:auto !important;
+      height:auto !important;
+      max-width:100% !important;
+      max-height:100% !important;
+    }
+
+    @media (max-width: 1100px){
+      .toolbar{ width:235px; }
+      .wrap{ margin-left:235px; padding:12px; }
+      #mapa-pmrr{ width:1200px; grid-template-columns:minmax(0,1fr) 300px; }
+    }
+
+    @media print{
+      body{ background:white; }
+      .toolbar{ display:none; }
+      .wrap{ padding:0; margin-left:0; display:block; }
+      #mapa-pmrr{ box-shadow:none; margin:0; border:0; transform:none; }
+      .logoBox{ border:0 !important; outline:0 !important; box-shadow:none !important; background:#fff !important; }
+      [contenteditable="true"]{ outline:none !important; background:transparent !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <div class="painel-titulo">EDITOR PMRR<br><span style="font-size:12px;font-weight:600;opacity:.8">Barra lateral esquerda</span></div>
+    <label>Adicionar mapa central
+      <input id="uploadMapa" type="file" accept="image/*">
+    </label>
+    <label>Trocar logo esquerda
+      <input id="uploadLogo1" type="file" accept="image/*">
+    </label>
+    <label>Trocar logo direita
+      <input id="uploadLogo2" type="file" accept="image/*">
+    </label>
+    <button onclick="ajustarBordasAoMapa()">Ajustar bordas ao mapa</button>
+    <button onclick="exportarPNG()">Exportar PNG</button>
+    <button class="secondary" onclick="exportarPDF()">Salvar em PDF</button>
+    <button class="secondary" onclick="window.print()">Imprimir</button>
+    <div class="aviso">
+      <b>Logos automáticas:</b><br>
+      deixe na mesma pasta do HTML:<br>
+      <b>brasao.png</b><br>
+      <b>defesa-civil.png</b>
+    </div>
+    <small>Clique nos textos dos quadros para editar.</small>
+  </div>
+
+  <div class="wrap">
+    <main id="mapa-pmrr">
+      <header class="topo">
+        <section class="titulo">
+          <h1 contenteditable="true">MAPA DE RISCO DE ALAGAMENTO</h1>
+          <h2 contenteditable="true">BAIRRO SANTA AUGUSTA – BRAÇO DO NORTE/SC</h2>
+          <h3 contenteditable="true">PMRR – PLANO MUNICIPAL DE REDUÇÃO DE RISCOS DE DESASTRES</h3>
+        </section>
+
+        <section class="logos">
+          <div class="logoBox" id="logo1" title="Clique no botão Logo esquerda para trocar">BRASÃO</div>
+          <div class="prefeitura" contenteditable="true">
+            PREFEITURA DE<br>
+            <span class="cidade">BRAÇO DO NORTE</span>
+            DEFESA CIVIL
+          </div>
+          <div class="logoBox" id="logo2" title="Clique no botão Logo direita para trocar">DEFESA<br>CIVIL</div>
+        </section>
+      </header>
+
+      <section class="mapa-area">
+        <img id="mapaImg" alt="Mapa central">
+        <div class="placeholder" id="placeholder">
+          <b>ÁREA CENTRAL DO MAPA</b><br>
+          Use o botão “Adicionar mapa central” para inserir a imagem/satélite/mapa pronto.
+        </div>
+        <div class="footer-note" contenteditable="true">Observação do mapa</div>
+      </section>
+
+      <aside class="sidebar">
+        <section class="box">
+          <div class="box-title">LEGENDA</div>
+          <div class="content">
+            <div class="legend-row">
+              <div class="symbol"></div>
+              <div contenteditable="true">DELIMITAÇÃO DO BAIRRO<br>SANTA AUGUSTA</div>
+            </div>
+            <div class="legend-row">
+              <div class="symbol r1"></div>
+              <div contenteditable="true"><b>R1 – BAIXO RISCO</b><br>Áreas mais baixas suscetíveis a alagamentos.</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="box">
+          <div class="box-title">CLASSIFICAÇÃO DO RISCO</div>
+          <table>
+            <thead>
+              <tr><th contenteditable="true">RISCO</th><th contenteditable="true">GRAU</th></tr>
+            </thead>
+            <tbody>
+              <tr><td contenteditable="true">R1</td><td class="grau-r1" contenteditable="true">BAIXO</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="box">
+          <div class="box-title">LOGRADOUROS COM RISCO</div>
+          <div class="content" contenteditable="true">
+            <div class="linha"><span class="mini-line"></span><b>R1 – BAIXO RISCO</b></div>
+            <ul>
+              <li>Rua Ricardo Witthinrich</li>
+              <li>Rua José Spech</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="box">
+          <div class="box-title">DADOS TÉCNICOS</div>
+          <div class="content small" contenteditable="true">
+            Sistema de Coordenadas: SIRGAS 2000 / UTM Zona 22S<br><br>
+            Fonte: Prefeitura Municipal de Braço do Norte (PMBN)<br>
+            Defesa Civil de Braço do Norte<br><br>
+            Imagem: Google Satélite (2024)<br><br>
+            Data: Maio/2025
+          </div>
+        </section>
+
+        <section class="box">
+          <div class="box-title">CONVENÇÕES CARTOGRÁFICAS</div>
+          <div class="content">
+            <div class="conv"><span class="water">∿</span><span contenteditable="true">Hidrografia</span></div>
+            <div class="conv"><span class="road-main"></span><span contenteditable="true">Vias principais</span></div>
+            <div class="conv"><span class="road-local"></span><span contenteditable="true">Vias locais</span></div>
+            <div class="conv"><span class="limite"></span><span contenteditable="true">Limite municipal</span></div>
+          </div>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+<script>
+  function carregarImagem(inputId, alvoId){
+    const input = document.getElementById(inputId);
+    input.addEventListener('change', () => {
+      const file = input.files && input.files[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        if(alvoId === 'mapaImg'){
+          const img = document.getElementById('mapaImg');
+          img.onload = () => ajustarBordasAoMapa();
+          img.src = e.target.result;
+          img.style.display = 'block';
+          document.getElementById('placeholder').style.display = 'none';
+        } else {
+          const box = document.getElementById(alvoId);
+          box.innerHTML = '';
+          const img = document.createElement('img');
+          img.src = e.target.result;
+          box.appendChild(img);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  carregarImagem('uploadMapa','mapaImg');
+  carregarImagem('uploadLogo1','logo1');
+  carregarImagem('uploadLogo2','logo2');
+
+  function carregarLogoAutomatica(alvoId, arquivos){
+    const box = document.getElementById(alvoId);
+    if(!box) return;
+
+    let i = 0;
+    function tentarProximo(){
+      if(i >= arquivos.length) return;
+      const nome = arquivos[i++];
+      const img = new Image();
+      img.onload = () => {
+        box.innerHTML = '';
+        img.alt = alvoId === 'logo1' ? 'Brasão' : 'Defesa Civil';
+        box.appendChild(img);
+      };
+      img.onerror = tentarProximo;
+      img.src = nome + '?v=' + Date.now();
+    }
+    tentarProximo();
+  }
+
+  // Para carregar automaticamente, coloque as imagens na MESMA PASTA deste HTML.
+  carregarLogoAutomatica('logo1', ['brasao.png','brasao.jpg','logo-esquerda.png','logo_esquerda.png']);
+  carregarLogoAutomatica('logo2', ['defesa-civil.png','defesa_civil.png','logo-direita.png','logo_direita.png']);
+
+  function ajustarBordasAoMapa(){
+    const img = document.getElementById('mapaImg');
+    const area = document.querySelector('.mapa-area');
+    if(!img || !area || !img.naturalWidth || !img.naturalHeight) return;
+
+    const larguraArea = area.clientWidth;
+    const alturaCorreta = Math.round(larguraArea * (img.naturalHeight / img.naturalWidth));
+
+    area.style.height = alturaCorreta + 'px';
+    document.getElementById('mapa-pmrr').style.height = 'auto';
+    img.style.width = '100%';
+    img.style.height = '100%';
+    img.style.objectFit = 'contain';
+  }
+
+  window.addEventListener('resize', ajustarBordasAoMapa);
+
+  function obterNomeArquivo(extensao){
+    let texto = (document.querySelector('.titulo h2')?.innerText || '').trim();
+
+    // Exemplo: "BAIRRO SANTA AUGUSTA – BRAÇO DO NORTE/SC" vira "MAPA SANTA AUGUSTA"
+    texto = texto
+      .replace(/\s+/g, ' ')
+      .replace(/^BAIRRO\s+/i, '')
+      .split(/[–—-]/)[0]
+      .replace(/\s+BRAÇO DO NORTE\/?SC$/i, '')
+      .trim();
+
+    if(!texto) texto = 'EDITADO';
+
+    const bairro = texto
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-zA-Z0-9 ]+/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toUpperCase();
+
+    return `MAPA ${bairro || 'EDITADO'}.${extensao}`;
+  }
+
+  function prepararLogosParaExportacao(){
+    const alterados = [];
+    document.querySelectorAll('.logoBox, .logoBox *').forEach((el) => {
+      alterados.push({
+        el,
+        border: el.style.border,
+        outline: el.style.outline,
+        boxShadow: el.style.boxShadow,
+        background: el.style.background,
+        outlineOffset: el.style.outlineOffset
+      });
+      el.style.setProperty('border', '0', 'important');
+      el.style.setProperty('outline', '0', 'important');
+      el.style.setProperty('box-shadow', 'none', 'important');
+      el.style.setProperty('outline-offset', '0', 'important');
+    });
+    document.querySelectorAll('.logoBox').forEach((el) => {
+      el.style.setProperty('background', '#ffffff', 'important');
+    });
+    return () => {
+      alterados.forEach((item) => {
+        item.el.style.border = item.border;
+        item.el.style.outline = item.outline;
+        item.el.style.boxShadow = item.boxShadow;
+        item.el.style.background = item.background;
+        item.el.style.outlineOffset = item.outlineOffset;
+      });
+    };
+  }
+
+  async function capturarMapaCanvas(){
+    ajustarBordasAoMapa();
+    document.body.classList.add('exporting');
+    const restaurarLogos = prepararLogosParaExportacao();
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const alvo = document.getElementById('mapa-pmrr');
+    try{
+      return await html2canvas(alvo, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        onclone: (doc) => {
+          doc.body.classList.add('exporting');
+
+          // Remove qualquer guia visual de edição que poderia sair no PNG/PDF.
+          doc.querySelectorAll('.logoBox, .logoBox *').forEach((el) => {
+            el.style.setProperty('border', '0', 'important');
+            el.style.setProperty('outline', '0', 'important');
+            el.style.setProperty('box-shadow', 'none', 'important');
+            el.style.setProperty('outline-offset', '0', 'important');
+          });
+
+          doc.querySelectorAll('.logoBox').forEach((el) => {
+            el.style.setProperty('background', '#ffffff', 'important');
+          });
+
+          doc.querySelectorAll('[contenteditable="true"]').forEach((el) => {
+            el.style.outline = '0';
+            el.style.boxShadow = 'none';
+            el.style.background = 'transparent';
+          });
+        }
+      });
+    } finally {
+      restaurarLogos();
+      document.body.classList.remove('exporting');
+    }
+  }
+
+  async function exportarPNG(){
+    const canvas = await capturarMapaCanvas();
+    const link = document.createElement('a');
+    link.download = obterNomeArquivo('png');
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }
+
+  async function exportarPDF(){
+    const canvas = await capturarMapaCanvas();
+    const imgData = canvas.toDataURL('image/png');
+    const { jsPDF } = window.jspdf;
+
+    const orientacao = canvas.width >= canvas.height ? 'landscape' : 'portrait';
+    const pdf = new jsPDF({ orientation: orientacao, unit: 'px', format: [canvas.width, canvas.height] });
+    pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+    pdf.save(obterNomeArquivo('pdf'));
+  }
+</script>
+</body>
+</html>
